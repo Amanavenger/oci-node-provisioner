@@ -39,9 +39,9 @@ jobs:
           do
             echo "Attempting server registration $i..."
             
-            # This triggers the native launch instance request using your secrets
+            # We hardcode your exact Phoenix AD string here to bypass the discovery lookup glitch
             RESPONSE=$(oci compute instance launch \
-              --availability-domain "$(oci iam availability-domain list --output table --query "data[0].name" --raw-output)" \
+              --availability-domain "UvAC:PHX-AD-1" \
               --compartment-id "${{ secrets.OCI_TENANCY_ID }}" \
               --shape "VM.Standard.A1.Flex" \
               --shape-config '{"ocpus":4,"memoryInGBs":24}' \
@@ -53,7 +53,7 @@ jobs:
               
             echo "Server Response Log: $RESPONSE"
             
-            if [[ "$RESPONSE" == *"Out of host capacity"* ]]; then
+            if [[ "$RESPONSE" == *"Out of host capacity"* || "$RESPONSE" == *"LimitExceeded"* ]]; then
               echo "Capacity Unavailable. Resting 60 seconds before retrying..."
               sleep 60
             else
