@@ -34,17 +34,16 @@ jobs:
       - name: Execution Cycle (Spam Attempt 60-Second Loop)
         run: |
           echo "Starting the continuous 5-minute automated window..."
-          # GitHub workflows timeout, so we run a local loop inside this 5-minute block
           for i in {1..4}
           do
             echo "Attempting server registration $i..."
             
-            # Adding "|| true" inside the subshell stops GitHub from crashing instantly on an API error
+            # Using clean variable structures prevents Bash from warping the shape-config quotes
             RESPONSE=$(oci compute instance launch \
               --availability-domain "UvAC:PHX-AD-1" \
               --compartment-id "${{ secrets.OCI_TENANCY_ID }}" \
               --shape "VM.Standard.A1.Flex" \
-              --shape-config '{"ocpus":4,"memoryInGBs":24}' \
+              --shape-config '{"ocpus": 4, "memoryInGBs": 24}' \
               --boot-volume-size-in-gbs 100 \
               --subnet-id "${{ secrets.OCI_SUBNET_ID }}" \
               --image-id "${{ secrets.OCI_IMAGE_ID }}" \
@@ -52,11 +51,12 @@ jobs:
               
             echo "Server Response Log: $RESPONSE"
             
-            if [[ "$RESPONSE" == *"Out of host capacity"* || "$RESPONSE" == *"LimitExceeded"* ]]; then
-              echo "Capacity Unavailable. Resting 60 seconds before retrying..."
-              sleep 60
-            else
-              echo "SUCCESS! Server creation initialized."
+            # Smart Check: Only claim success if the JSON response actually contains an Oracle ID instance reference
+            if [[ "$RESPONSE" == *"ocid1.instance"* || "$RESPONSE" == *"PROVISIONING"* ]]; then
+              echo "SUCCESS! Server creation initialized perfectly."
               exit 0
+            else
+              echo "Request failed or out of capacity. Resting 60 seconds before retrying..."
+              sleep 60
             fi
           done
