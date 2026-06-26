@@ -1,0 +1,63 @@
+name: Continuous OCI Instance Provisioning loop
+
+on:
+  schedule:
+    # This runs the task every 5 minutes (GitHub's safety limit)
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # This allows you to click a button and start it manually
+
+jobs:
+  attempt-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Oracle Cloud Infrastructure CLI Engine
+        run: |
+          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
+          echo "/home/runner/bin" >> $GITHUB_PATH
+
+      - name: Configure Authentication Profile Keys
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+          
+          cat <<EOF > ~/.oci/config
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_ID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          tenancy=${{ secrets.OCI_TENANCY_ID }}
+          region=${{ secrets.OCI_REGION }}
+          key_file=~/.oci/oci_api_key.pem
+          EOF
+          chmod 600 ~/.oci/config
+
+      - name: Execution Cycle (Spam Attempt 60-Second Loop)
+        run: |
+          echo "Starting the continuous 5-minute automated window..."
+          # GitHub workflows timeout, so we run a local loop inside this 5-minute block
+          for i in {1..4}
+          do
+            echo "Attempting server registration $i..."
+            
+            # This triggers the native launch instance request using your secrets
+            RESPONSE=$(oci compute instance launch \
+              --availability-domain "$(oci iam availability-domain list --output table --query "data[0].name" --raw-output)" \
+              --compartment-id "${{ secrets.OCI_TENANCY_ID }}" \
+              --shape "VM.Standard.A1.Flex" \
+              --shape-config '{"ocpus":4,"memoryInGBs":24}' \
+              --boot-volume-size-in-gbs 100 \
+              --subnet-id "${{ secrets.OCI_SUBNET_ID }}" \
+              --image-id "${{ secrets.OCI_IMAGE_ID }}" \
+              --display-name "FX-Backend-Server" \
+              2>&1)
+              
+            echo "Server Response Log: $RESPONSE"
+            
+            if [[ "$RESPONSE" == *"Out of host capacity"* ]]; then
+              echo "Capacity Unavailable. Resting 60 seconds before retrying..."
+              sleep 60
+            else
+              echo "SUCCESS! Server creation initialized."
+              exit 0
+            fi
+          done
