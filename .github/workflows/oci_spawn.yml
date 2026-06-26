@@ -39,8 +39,8 @@ jobs:
           do
             echo "Attempting server registration $i..."
             
-            # We hardcode your exact Phoenix AD string here to bypass the discovery lookup glitch
-            RESPONSE=$(oci compute instance launch \
+            # Using the explicit absolute path ~/bin/oci guarantees execution
+            RESPONSE=$(~/bin/oci compute instance launch \
               --availability-domain "UvAC:PHX-AD-1" \
               --compartment-id "${{ secrets.OCI_TENANCY_ID }}" \
               --shape "VM.Standard.A1.Flex" \
