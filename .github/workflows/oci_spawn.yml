@@ -35,22 +35,21 @@ jobs:
         run: |
           echo "Starting the continuous 5-minute automated window..."
           
-          # Define the array of all 3 Phoenix Availability Domains
           ads=("UvAC:PHX-AD-1" "UvAC:PHX-AD-2" "UvAC:PHX-AD-3")
           
           for i in {1..4}
           do
-            # This cycles through the array indexes (0, 1, 2) based on the current loop run
             ad_index=$(( (i - 1) % 3 ))
             current_ad="${ads[$ad_index]}"
             
             echo "Attempting server registration $i using $current_ad..."
                         
+            # Clean single quotes around the JSON payload with no backslashes
             RESPONSE=$(oci compute instance launch \
               --availability-domain "$current_ad" \
               --compartment-id "${{ secrets.OCI_TENANCY_ID }}" \
               --shape "VM.Standard.A1.Flex" \
-              --shape-config "{\"ocpus\": 4, \"memoryInGbs\": 24}" \
+              --shape-config '{"ocpus":4,"memoryInGbs":24}' \
               --boot-volume-size-in-gbs 100 \
               --subnet-id "${{ secrets.OCI_SUBNET_ID }}" \
               --image-id "${{ secrets.OCI_IMAGE_ID }}" \
