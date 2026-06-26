@@ -1,8 +1,8 @@
-name: Continuous OCI Instance Provisioning Loop (Terraform)
+name: Continuous OCI Python SDK Provisioner Loop
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Runs every 5 minutes
-  workflow_dispatch:       # Allows manual triggers
+    - cron: '*/5 * * * *'  # Runs every 5 minutes automatically
+  workflow_dispatch:       # Allows manual execution triggers
 
 jobs:
   attempt-build:
@@ -11,47 +11,21 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - name: Setup Terraform Engine
-        uses: hashicorp/setup-terraform@v3
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
         with:
-          terraform_version: "1.5.7"
+          python-version: '3.10'
 
-      - name: Initialize Terraform
-        run: terraform init
-        env:
-          TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_ID }}
-          TF_VAR_user_ocid:    ${{ secrets.OCI_USER_ID }}
-          TF_VAR_fingerprint:  ${{ secrets.OCI_FINGERPRINT }}
-          TF_VAR_private_key:  ${{ secrets.OCI_PRIVATE_KEY }}
-          TF_VAR_region:       ${{ secrets.OCI_REGION }}
+      - name: Install SDK Requirements
+        run: pip install -r requirements.txt
 
-      - name: Execution Cycle (Spam Attempt 60-Second Loop)
-        run: |
-          echo "Starting the continuous 5-minute automated window via Terraform..."
-          for i in {1..4}
-          do
-            echo "Attempting Terraform deployment loop $i..."
-            
-            # Runs the configuration plan directly to Oracle's system
-            RESPONSE=$(terraform apply -auto-approve 2>&1 || true)
-            echo "Terraform Response Log: $RESPONSE"
-            
-            if [[ "$RESPONSE" == *"Apply complete!"* ]]; then
-              echo "SUCCESS! Server infrastructure created perfectly."
-              exit 0
-            elif [[ "$RESPONSE" == *"OutOfHostCapacity"* || "$RESPONSE" == *"LimitExceeded"* || "$RESPONSE" == *"500"* || "$RESPONSE" == *"InternalError"* ]]; then
-              echo "Capacity Unavailable. Resting 60 seconds before retrying..."
-              sleep 60
-            else
-              echo "A configuration error occurred. Reviewing logs."
-              exit 1
-            fi
-          done
+      - name: Execute Python Provisioning Engine
+        run: python "Ampere 24 ram 4 cpu/bot.py"
         env:
-          TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_ID }}
-          TF_VAR_user_ocid:    ${{ secrets.OCI_USER_ID }}
-          TF_VAR_fingerprint:  ${{ secrets.OCI_FINGERPRINT }}
-          TF_VAR_private_key:  ${{ secrets.OCI_PRIVATE_KEY }}
-          TF_VAR_region:       ${{ secrets.OCI_REGION }}
-          TF_VAR_subnet_id:    ${{ secrets.OCI_SUBNET_ID }}
-          TF_VAR_image_id:     ${{ secrets.OCI_IMAGE_ID }}
+          OCI_USER_ID: ${{ secrets.OCI_USER_ID }}
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_TENANCY_ID: ${{ secrets.OCI_TENANCY_ID }}
+          OCI_REGION: ${{ secrets.OCI_REGION }}
+          OCI_SUBNET_ID: ${{ secrets.OCI_SUBNET_ID }}
+          OCI_IMAGE_ID: ${{ secrets.OCI_IMAGE_ID }}
