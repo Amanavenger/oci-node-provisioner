@@ -33,35 +33,25 @@ jobs:
 
       - name: Execution Cycle (Spam Attempt 60-Second Loop)
         run: |
-          echo "Starting the continuous 5-minute automated window..."
-          
-          ads=("UvAC:PHX-AD-1" "UvAC:PHX-AD-2" "UvAC:PHX-AD-3")
-          
+          echo "Starting the continuous 5-minute automated window via Oracle Stack..."
           for i in {1..4}
           do
-            ad_index=$(( (i - 1) % 3 ))
-            current_ad="${ads[$ad_index]}"
+            echo "Attempting stack execution deployment $i..."
             
-            echo "Attempting server registration $i using $current_ad..."
-                        
-            # Clean single quotes around the JSON payload with no backslashes
-            RESPONSE=$(oci compute instance launch \
-              --availability-domain "$current_ad" \
-              --compartment-id "${{ secrets.OCI_TENANCY_ID }}" \
-              --shape "VM.Standard.A1.Flex" \
-              --shape-config '{"ocpus":4,"memoryInGbs":24}' \
-              --boot-volume-size-in-gbs 100 \
-              --subnet-id "${{ secrets.OCI_SUBNET_ID }}" \
-              --image-id "${{ secrets.OCI_IMAGE_ID }}" \
-              --display-name "FX-Backend-Server" 2>&1 || true)
+            # This triggers Oracle's Resource Manager to run your saved architecture layout
+            RESPONSE=$(oci resource-manager job create \
+              --stack-id "${{ secrets.OCI_STACK_ID }}" \
+              --operation APPLY \
+              --display-name "GitHub-Automated-Spam-Attempt-$i" 2>&1 || true)
                           
             echo "Server Response Log: $RESPONSE"
                         
-            if [[ "$RESPONSE" == *"ocid1.instance"* || "$RESPONSE" == *"PROVISIONING"* ]]; then
-              echo "SUCCESS! Server creation initialized perfectly."
+            # Resource manager returns 'ACCEPTED' or 'SUCCEEDED' when it successfully initializes a job
+            if [[ "$RESPONSE" == *"ACCEPTED"* || "$RESPONSE" == *"SUCCEEDED"* ]]; then
+              echo "SUCCESS! Oracle Stack has accepted the execution plan."
               exit 0
             else
-              echo "Request failed or out of capacity in $current_ad. Resting 60 seconds before retrying..."
+              echo "Request failed or out of capacity. Resting 60 seconds before retrying..."
               sleep 60
             fi
           done
