@@ -39,8 +39,8 @@ jobs:
           do
             echo "Attempting server registration $i..."
             
-            # Using the explicit absolute path ~/bin/oci guarantees execution
-            RESPONSE=$(~/bin/oci compute instance launch \
+            # Adding "|| true" inside the subshell stops GitHub from crashing instantly on an API error
+            RESPONSE=$(oci compute instance launch \
               --availability-domain "UvAC:PHX-AD-1" \
               --compartment-id "${{ secrets.OCI_TENANCY_ID }}" \
               --shape "VM.Standard.A1.Flex" \
@@ -48,7 +48,7 @@ jobs:
               --boot-volume-size-in-gbs 100 \
               --subnet-id "${{ secrets.OCI_SUBNET_ID }}" \
               --image-id "${{ secrets.OCI_IMAGE_ID }}" \
-              --display-name "FX-Backend-Server" 2>&1)
+              --display-name "FX-Backend-Server" 2>&1 || true)
               
             echo "Server Response Log: $RESPONSE"
             
