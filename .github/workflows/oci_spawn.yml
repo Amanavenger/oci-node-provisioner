@@ -1,57 +1,57 @@
-name: Continuous OCI Instance Provisioning loop
-
+name: Continuous OCI Instance Provisioning Loop (Terraform)
 on:
   schedule:
-    # This runs the task every 5 minutes (GitHub's safety limit)
-    - cron: '*/5 * * * *'
-  workflow_dispatch: # This allows you to click a button and start it manually
+    - cron: '*/5 * * * *'  # Runs every 5 minutes
+  workflow_dispatch:       # Allows manual triggers
 
 jobs:
   attempt-build:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Oracle Cloud Infrastructure CLI Engine
-        run: |
-          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
-          echo "/home/runner/bin" >> $GITHUB_PATH
+      - name: Check out repository code
+        uses: actions/checkout@v4
 
-      - name: Configure Authentication Profile Keys
-        run: |
-          mkdir -p ~/.oci
-          echo "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/oci_api_key.pem
-          chmod 600 ~/.oci/oci_api_key.pem
-          
-          cat <<EOF > ~/.oci/config
-          [DEFAULT]
-          user=${{ secrets.OCI_USER_ID }}
-          fingerprint=${{ secrets.OCI_FINGERPRINT }}
-          tenancy=${{ secrets.OCI_TENANCY_ID }}
-          region=${{ secrets.OCI_REGION }}
-          key_file=~/.oci/oci_api_key.pem
-          EOF
-          chmod 600 ~/.oci/config
+      - name: Setup Terraform Engine
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+
+      - name: Initialize Terraform
+        run: terraform init
+        env:
+          TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_ID }}
+          TF_VAR_user_ocid:    ${{ secrets.OCI_USER_ID }}
+          TF_VAR_fingerprint:  ${{ secrets.OCI_FINGERPRINT }}
+          TF_VAR_private_key:  ${{ secrets.OCI_PRIVATE_KEY }}
+          TF_VAR_region:       ${{ secrets.OCI_REGION }}
 
       - name: Execution Cycle (Spam Attempt 60-Second Loop)
         run: |
-          echo "Starting the continuous 5-minute automated window via Oracle Stack..."
+          echo "Starting the continuous 5-minute automated window via Terraform..."
           for i in {1..4}
           do
-            echo "Attempting stack execution deployment $i..."
+            echo "Attempting Terraform deployment loop $i..."
             
-            # This triggers Oracle's Resource Manager to run your saved architecture layout
-            RESPONSE=$(oci resource-manager job create \
-              --stack-id "${{ secrets.OCI_STACK_ID }}" \
-              --operation APPLY \
-              --display-name "GitHub-Automated-Spam-Attempt-$i" 2>&1 || true)
-                          
-            echo "Server Response Log: $RESPONSE"
-                        
-            # Resource manager returns 'ACCEPTED' or 'SUCCEEDED' when it successfully initializes a job
-            if [[ "$RESPONSE" == *"ACCEPTED"* || "$RESPONSE" == *"SUCCEEDED"* ]]; then
-              echo "SUCCESS! Oracle Stack has accepted the execution plan."
+            # Runs the configuration plan directly to Oracle's system
+            RESPONSE=$(terraform apply -auto-approve 2>&1 || true)
+            echo "Terraform Response Log: $RESPONSE"
+            
+            if [[ "$RESPONSE" == *"Apply complete!"* ]]; then
+              echo "SUCCESS! Server infrastructure created perfectly."
               exit 0
-            else
-              echo "Request failed or out of capacity. Resting 60 seconds before retrying..."
+            elif [[ "$RESPONSE" == *"OutOfHostCapacity"* || "$RESPONSE" == *"LimitExceeded"* || "$RESPONSE" == *"500"* || "$RESPONSE" == *"InternalError"* ]]; then
+              echo "Capacity Unavailable. Resting 60 seconds before retrying..."
               sleep 60
+            else
+              echo "A configuration error occurred. Reviewing logs."
+              exit 1
             fi
           done
+        env:
+          TF_VAR_tenancy_ocid: ${{ secrets.OCI_TENANCY_ID }}
+          TF_VAR_user_ocid:    ${{ secrets.OCI_USER_ID }}
+          TF_VAR_fingerprint:  ${{ secrets.OCI_FINGERPRINT }}
+          TF_VAR_private_key:  ${{ secrets.OCI_PRIVATE_KEY }}
+          TF_VAR_region:       ${{ secrets.OCI_REGION }}
+          TF_VAR_subnet_id:    ${{ secrets.OCI_SUBNET_ID }}
+          TF_VAR_image_id:     ${{ secrets.OCI_IMAGE_ID }}
