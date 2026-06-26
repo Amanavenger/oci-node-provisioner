@@ -48,8 +48,7 @@ jobs:
               --boot-volume-size-in-gbs 100 \
               --subnet-id "${{ secrets.OCI_SUBNET_ID }}" \
               --image-id "${{ secrets.OCI_IMAGE_ID }}" \
-              --display-name "FX-Backend-Server" \
-              2>&1)
+              --display-name "FX-Backend-Server" 2>&1)
               
             echo "Server Response Log: $RESPONSE"
             
