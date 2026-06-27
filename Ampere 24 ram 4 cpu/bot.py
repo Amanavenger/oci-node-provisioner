@@ -16,7 +16,7 @@ config = {
 
 try:
     compute_client = oci.core.ComputeClient(config)
-    print("OCI Authentication Successful. Initializing loop sequence...")
+    print("OCI Authentication Successful. Initializing long loop sequence...")
 except Exception as e:
     print(f"Authentication Failed: {e}")
     exit(1)
@@ -29,9 +29,12 @@ image_id = os.getenv("OCI_IMAGE_ID")
 # Availability Domains to cycle through
 ads = ["uufj:PHX-AD-1", "uufj:PHX-AD-2", "uufj:PHX-AD-3"]
 
-for i in range(1, 5):
+# Expanded to 35 attempts (~35 minutes of continuous running)
+total_attempts = 35
+
+for i in range(1, total_attempts + 1):
     current_ad = ads[(i - 1) % len(ads)]
-    print(f"\n[Attempt {i}/4] Requesting instance in {current_ad}...")
+    print(f"\n[Attempt {i}/{total_attempts}] Requesting instance in {current_ad}...")
     
     try:
         request = oci.core.models.LaunchInstanceDetails(
@@ -63,9 +66,10 @@ for i in range(1, 5):
             
     except oci.exceptions.ServiceError as e:
         if "Out of host capacity" in str(e) or e.status == 500:
-            print(f"Capacity Unavailable in {current_ad}. Waiting for next attempt...")
+            print(f"Capacity Unavailable in {current_ad}. Resting 60 seconds...")
         else:
             print(f"API Error encountered: {e.message}")
             
-    if i < 4:
+    # Always maintain a strict 60-second rest before hitting the next AD, except on the final loop
+    if i < total_attempts:
         time.sleep(60)
