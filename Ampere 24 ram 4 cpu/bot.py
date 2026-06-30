@@ -25,13 +25,13 @@ except Exception as e:
 compartment_id = os.getenv("OCI_TENANCY_ID")
 subnet_id = os.getenv("OCI_SUBNET_ID")
 image_id = os.getenv("OCI_IMAGE_ID")
-public_ssh_key = os.getenv("OCI_PUBLIC_SSH_KEY") # Fetches your public key from GitHub Secrets
+public_ssh_key = os.getenv("OCI_PUBLIC_SSH_KEY") 
 
 # Availability Domains to cycle through
 ads = ["uufj:PHX-AD-1", "uufj:PHX-AD-2", "uufj:PHX-AD-3"]
 
-# Updated Execution parameters for 1 hour of continuous cover
-total_attempts = 60  # 60 attempts * 60-second sleep = ~60 minutes total run time
+# Changed to 60 to run for exactly an hour with the 60-second sleep timer
+total_attempts = 60 
 
 for i in range(1, total_attempts + 1):
     current_ad = ads[(i - 1) % len(ads)]
@@ -58,8 +58,9 @@ for i in range(1, total_attempts + 1):
                 assign_private_dns_record=True,
                 display_name="forexalertsvnic"
             ),
+            # CRITICAL FIX: Explicitly cast the key variable to a string
             metadata={
-                "ssh_authorized_keys": public_ssh_key
+                "ssh_authorized_keys": str(public_ssh_key)
             }
         )
         
