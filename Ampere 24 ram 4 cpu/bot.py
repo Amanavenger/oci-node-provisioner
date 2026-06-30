@@ -16,7 +16,7 @@ config = {
 
 try:
     compute_client = oci.core.ComputeClient(config)
-    print("OCI Authentication Successful. Initializing loop sequence with SSH validation...")
+    print("OCI Authentication Successful. Initializing loop sequence...")
 except Exception as e:
     print(f"Authentication Failed: {e}")
     exit(1)
@@ -27,15 +27,19 @@ subnet_id = os.getenv("OCI_SUBNET_ID")
 image_id = os.getenv("OCI_IMAGE_ID")
 public_ssh_key = os.getenv("OCI_PUBLIC_SSH_KEY") 
 
+# SAFETY CHECK: Verify the key actually loaded from GitHub Secrets
+if not public_ssh_key or public_ssh_key.strip() == "":
+    print("CRITICAL ERROR: OCI_PUBLIC_SSH_KEY is empty or missing from your secrets!")
+    exit(1)
+
 # Availability Domains to cycle through
 ads = ["uufj:PHX-AD-1", "uufj:PHX-AD-2", "uufj:PHX-AD-3"]
 
-# Changed to 60 to run for exactly an hour with the 60-second sleep timer
 total_attempts = 60 
 
 for i in range(1, total_attempts + 1):
     current_ad = ads[(i - 1) % len(ads)]
-    print(f"\n[Attempt {i}/{total_attempts}] Requesting instance in {current_ad}...")
+    print(f"[Attempt {i}/{total_attempts}] Requesting instance in {current_ad}...")
     
     try:
         request = oci.core.models.LaunchInstanceDetails(
@@ -58,9 +62,8 @@ for i in range(1, total_attempts + 1):
                 assign_private_dns_record=True,
                 display_name="forexalertsvnic"
             ),
-            # CRITICAL FIX: Explicitly cast the key variable to a string
             metadata={
-                "ssh_authorized_keys": str(public_ssh_key)
+                "ssh_authorized_keys": str(public_ssh_key).strip()
             }
         )
         
@@ -71,9 +74,9 @@ for i in range(1, total_attempts + 1):
             
     except oci.exceptions.ServiceError as e:
         if "Out of host capacity" in str(e) or e.status == 500:
-            print(f"Capacity Unavailable in {current_ad}. Resting 60 seconds...")
+            print(f"-> Capacity Unavailable. Resting 60 seconds...")
         else:
-            print(f"API Error encountered: {e.message}")
+            print(f"-> API Error: {e.message}")
             
     if i < total_attempts:
         time.sleep(60)
