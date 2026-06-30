@@ -16,7 +16,7 @@ config = {
 
 try:
     compute_client = oci.core.ComputeClient(config)
-    print("OCI Authentication Successful. Initializing long loop sequence...")
+    print("OCI Authentication Successful. Initializing loop sequence with SSH validation...")
 except Exception as e:
     print(f"Authentication Failed: {e}")
     exit(1)
@@ -25,12 +25,13 @@ except Exception as e:
 compartment_id = os.getenv("OCI_TENANCY_ID")
 subnet_id = os.getenv("OCI_SUBNET_ID")
 image_id = os.getenv("OCI_IMAGE_ID")
+public_ssh_key = os.getenv("OCI_PUBLIC_SSH_KEY") # Fetches your public key from GitHub Secrets
 
 # Availability Domains to cycle through
 ads = ["uufj:PHX-AD-1", "uufj:PHX-AD-2", "uufj:PHX-AD-3"]
 
-# Expanded to 35 attempts (~35 minutes of continuous running)
-total_attempts = 35
+# Updated Execution parameters for 1 hour of continuous cover
+total_attempts = 60  # 60 attempts * 60-second sleep = ~60 minutes total run time
 
 for i in range(1, total_attempts + 1):
     current_ad = ads[(i - 1) % len(ads)]
@@ -56,12 +57,15 @@ for i in range(1, total_attempts + 1):
                 assign_public_ip=True,
                 assign_private_dns_record=True,
                 display_name="forexalertsvnic"
-            )
+            ),
+            metadata={
+                "ssh_authorized_keys": public_ssh_key
+            }
         )
         
         response = compute_client.launch_instance(request)
         if response.status == 200:
-            print("SUCCESS! Server creation initialized perfectly.")
+            print("SUCCESS! Authorized Server creation initialized perfectly.")
             exit(0)
             
     except oci.exceptions.ServiceError as e:
@@ -70,6 +74,5 @@ for i in range(1, total_attempts + 1):
         else:
             print(f"API Error encountered: {e.message}")
             
-    # Always maintain a strict 60-second rest before hitting the next AD, except on the final loop
     if i < total_attempts:
         time.sleep(60)
