@@ -29,6 +29,18 @@ jobs:
           OCI_REGION: ${{ secrets.OCI_REGION }}
           OCI_SUBNET_ID: ${{ secrets.OCI_SUBNET_ID }}
           OCI_IMAGE_ID: ${{ secrets.OCI_IMAGE_ID }}
-          # ADD THIS RUNNER MAPPING LINE RIGHT HERE:
+          OCI_COMPARTMENT_ID: ${{ vars.OCI_COMPARTMENT_ID }}
+          OCI_IMAGE_OS: ${{ vars.OCI_IMAGE_OS }}
+          OCI_IMAGE_OS_VERSION: ${{ vars.OCI_IMAGE_OS_VERSION }}
+          OCI_SHAPE: ${{ vars.OCI_SHAPE }}
+          OCI_OCPUS: ${{ vars.OCI_OCPUS }}
+          OCI_MEMORY_IN_GBS: ${{ vars.OCI_MEMORY_IN_GBS }}
+          OCI_BOOT_VOLUME_SIZE_IN_GBS: ${{ vars.OCI_BOOT_VOLUME_SIZE_IN_GBS }}
+          OCI_AVAILABILITY_DOMAINS: ${{ vars.OCI_AVAILABILITY_DOMAINS }}
+          OCI_DISPLAY_NAME: ${{ vars.OCI_DISPLAY_NAME }}
+          OCI_ASSIGN_PUBLIC_IP: ${{ vars.OCI_ASSIGN_PUBLIC_IP }}
+          OCI_TOTAL_ATTEMPTS: ${{ vars.OCI_TOTAL_ATTEMPTS }}
+          OCI_RETRY_SLEEP_SECONDS: ${{ vars.OCI_RETRY_SLEEP_SECONDS }}
+          OCI_ALLOW_PAID_LIMITS: ${{ vars.OCI_ALLOW_PAID_LIMITS }}
           OCI_PUBLIC_SSH_KEY: ${{ secrets.OCI_PUBLIC_SSH_KEY }} 
-        run: python "Ampere 24 ram 4 cpu/bot.py"
+        run: python provisioner/bot.py
