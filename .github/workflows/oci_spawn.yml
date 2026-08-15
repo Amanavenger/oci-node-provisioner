@@ -4,6 +4,10 @@ on:
     - cron: '*/5 * * * *'  # Runs every 5 minutes automatically
   workflow_dispatch:       # Allows manual execution triggers
 
+concurrency:
+  group: oci-node-provisioner
+  cancel-in-progress: false
+
 jobs:
   attempt-build:
     runs-on: ubuntu-latest
