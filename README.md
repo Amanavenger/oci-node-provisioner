@@ -63,6 +63,7 @@ OCI_MEMORY_IN_GBS               # defaults to 12
 OCI_BOOT_VOLUME_SIZE_IN_GBS     # defaults to 50
 OCI_AVAILABILITY_DOMAINS        # optional comma-separated AD names
 OCI_DISPLAY_NAME                # defaults to always-free-a1-node
+OCI_SKIP_EXISTING_INSTANCE_CHECK # defaults to false
 OCI_ASSIGN_PUBLIC_IP            # defaults to true
 OCI_TOTAL_ATTEMPTS              # defaults to 60
 OCI_RETRY_SLEEP_SECONDS         # defaults to 60
@@ -75,6 +76,17 @@ For `VM.Standard.A1.Flex`, the script refuses to request more than `2` OCPUs or
 `12 GB` RAM unless `OCI_ALLOW_PAID_LIMITS=true` is set. This is intentional:
 requesting the old `4 OCPU / 24 GB` configuration is no longer a safe Always
 Free default.
+
+## Existing Instance Guard
+
+Before every provisioning attempt, the script checks whether a non-terminated
+Compute instance already exists in the configured compartment with
+`OCI_DISPLAY_NAME` (default: `always-free-a1-node`). If it finds one, including
+an instance that is still `PROVISIONING`, it exits successfully without creating
+another server.
+
+If you intentionally want multiple instances with the same display name, set
+`OCI_SKIP_EXISTING_INSTANCE_CHECK=true` or use a different `OCI_DISPLAY_NAME`.
 
 ## Availability Domains
 

@@ -8,6 +8,7 @@ load_dotenv()
 ALWAYS_FREE_A1_MAX_OCPUS = 2.0
 ALWAYS_FREE_A1_MAX_MEMORY_GB = 12.0
 DEFAULT_BOOT_VOLUME_GB = 50
+TERMINAL_INSTANCE_STATES = {"TERMINATED", "TERMINATING"}
 
 
 def env_bool(name, default=False):
@@ -64,13 +65,12 @@ except Exception as e:
 
 # Execution parameters
 compartment_id = env_str("OCI_COMPARTMENT_ID", config["tenancy"])
-subnet_id = require_env("OCI_SUBNET_ID")
-public_ssh_key = require_env("OCI_PUBLIC_SSH_KEY")
 shape = env_str("OCI_SHAPE", "VM.Standard.A1.Flex")
 ocpus = env_float("OCI_OCPUS", ALWAYS_FREE_A1_MAX_OCPUS)
 memory_in_gbs = env_float("OCI_MEMORY_IN_GBS", ALWAYS_FREE_A1_MAX_MEMORY_GB)
 boot_volume_size_in_gbs = env_int("OCI_BOOT_VOLUME_SIZE_IN_GBS", DEFAULT_BOOT_VOLUME_GB)
 display_name = env_str("OCI_DISPLAY_NAME", "always-free-a1-node")
+skip_existing_instance_check = env_bool("OCI_SKIP_EXISTING_INSTANCE_CHECK", False)
 vnic_display_name = env_str("OCI_VNIC_DISPLAY_NAME", f"{display_name}-vnic")
 assign_public_ip = env_bool("OCI_ASSIGN_PUBLIC_IP", True)
 total_attempts = env_int("OCI_TOTAL_ATTEMPTS", 60)
@@ -88,6 +88,33 @@ if shape == "VM.Standard.A1.Flex" and not allow_paid_limits:
             "Set OCI_ALLOW_PAID_LIMITS=true only if you intentionally accept paid usage."
         )
         exit(1)
+
+
+def find_existing_instance():
+    response = oci.pagination.list_call_get_all_results(
+        compute_client.list_instances,
+        compartment_id,
+        display_name=display_name,
+    )
+    for instance in response.data:
+        state = (instance.lifecycle_state or "").upper()
+        if state not in TERMINAL_INSTANCE_STATES:
+            return instance
+    return None
+
+
+def exit_if_instance_exists():
+    if skip_existing_instance_check:
+        return
+
+    instance = find_existing_instance()
+    if instance:
+        print(
+            "Existing instance found; stopping without creating another server. "
+            f"display_name={instance.display_name}, state={instance.lifecycle_state}, "
+            f"id={instance.id}"
+        )
+        exit(0)
 
 
 def get_availability_domains():
@@ -125,6 +152,9 @@ def discover_latest_image_id():
     return selected.id
 
 try:
+    exit_if_instance_exists()
+    subnet_id = require_env("OCI_SUBNET_ID")
+    public_ssh_key = require_env("OCI_PUBLIC_SSH_KEY")
     ads = get_availability_domains()
     if not ads:
         raise RuntimeError("No availability domains returned for this tenancy")
@@ -144,6 +174,7 @@ for i in range(1, total_attempts + 1):
     print(f"[Attempt {i}/{total_attempts}] Requesting instance in {current_ad}...")
     
     try:
+        exit_if_instance_exists()
         request = oci.core.models.LaunchInstanceDetails(
             display_name=display_name,
             compartment_id=compartment_id,
