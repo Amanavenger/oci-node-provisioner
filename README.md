@@ -66,7 +66,7 @@ OCI_DISPLAY_NAME                # defaults to always-free-a1-node
 OCI_SKIP_EXISTING_INSTANCE_CHECK # defaults to false
 OCI_ASSIGN_PUBLIC_IP            # defaults to true
 OCI_TOTAL_ATTEMPTS              # defaults to 60
-OCI_RETRY_SLEEP_SECONDS         # defaults to 60
+OCI_RETRY_SLEEP_SECONDS         # defaults to 180 (3 min) to avoid API rate limiting
 OCI_ALLOW_PAID_LIMITS           # defaults to false
 ```
 
